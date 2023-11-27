@@ -13,51 +13,63 @@ from database import ChromaDBManager
 def format_query_results_to_dialogs(query_results, query):
     # Create a dialog context for each query result
     dialog = [
-        {"role": "system", "content": "Always answer based on the given information:"},
-        {"role": "assistant", "content": query_results}
-        {"role": "user", "content": query}
+        {"role":"system", "content": "Always answer based on the given information:"+ query_results},
+        # {"role":"assistant", "content": query_results},
+        {"role": "user", "content": query},
     ]
     
-    return dialog
+    return [dialog]
 
 def main(
     ckpt_dir: str,
     tokenizer_path: str,
+    query: str,
     temperature: float = 0.6,
     top_p: float = 0.9,
-    max_seq_len: int = 512,
-    max_batch_size: int = 8,
+    max_seq_len: int = 4096,
+    max_batch_size: int = 6,
     max_gen_len: Optional[int] = None,
-    pdf_directory,
-    database,
-    vector_database,
-    query,
-    num_result =3,
-
+    load_pdf_file_path: str = None,
+    load_pdf_file_name: str = None,
+    load_pdf_directory_path: str = None,
+    pdf_directory: str = '/gpfs/scratch/yh2563/ExamplePDFsForLLM/',
+    database: str = 'my_database.db',
+    vector_database: str = './chroma_db',
+    num_result: int = 3,
 ):
     # Initialize PDFProcessor, SQLiteDBManager, and ChromaDBManager
     pdf_processor = PDFProcessor(pdf_directory)
-    # sqlite_manager = SQLiteDBManager(database)
     chroma_manager = ChromaDBManager(database, vector_database)
 
-    # Load and store documents
-    document_splits = pdf_processor.load_from_directory()
-    # sqlite_manager.insert_documents(document_splits)
-    chroma_manager.add_documents_to_chroma(document_splits)
+    if load_pdf_file_name:
+        path = pdf_directory + load_pdf_file_name
+        document_chunks = pdf_processor.load_and_split_document_by_title(path)
+        chroma_manager.add_documents_to_chroma(document_chunks)
 
+    if load_pdf_file_path:
+        document_chunks = pdf_processor.load_and_split_document_by_title(load_pdf_file_path)
+        chroma_manager.add_documents_to_chroma(document_chunks)
+
+    if load_pdf_directory_path:
+        document_splits = pdf_processor.load_from_directory(load_pdf_directory_path)
+        chroma_manager.add_documents_to_chroma(document_splits)
+
+    # Prompt user for query
+    # query = input("Please enter you query:")
+    # query = "how MRI is used in biology?"
+    # print('this is your query: ', query)    
     # Perform a query
-    query_prompt = query
-    query_results = chroma_manager.query(query_prompt, num_result=num_result)
-
+    query_results = chroma_manager.query(query, num_result=num_result)
+    # print('here is the related information: ', query_results)
     # Prepare dialogs for Llama2 based on query results
-    dialogs = format_query_results_to_dialogs(query_results)
+    dialogs = format_query_results_to_dialogs(query_results, query)
 
     # Initialize Llama2
     generator = Llama.build(
         ckpt_dir=ckpt_dir,
         tokenizer_path=tokenizer_path,
-        max_seq_len=512,
-        max_batch_size=8
+        max_seq_len=max_seq_len,
+        max_batch_size=max_batch_size
     )
 
     # Generate chat completions with Llama2

@@ -7,6 +7,8 @@ import chromadb
 from langchain.embeddings.sentence_transformer import SentenceTransformerEmbeddings
 from langchain.vectorstores import Chroma
 
+from pdfloader import PDFProcessor
+
 class SQLiteDBManager:
     def __init__(self, db_path='my_database.db'):
         self.db_path = db_path
@@ -221,7 +223,7 @@ class ChromaDBManager:
         self.sqlite_db_manager = SQLiteDBManager(db_path)
         self.db_path = db_path
         self.embedding_function = embedding_function
-        self.chroma_instance = None
+        self.chroma_instance = Chroma(persist_directory=chroma_save_path, embedding_function=embedding_function)
 
     def add_documents_to_chroma(self, documents):
         # Insert documents into the SQL database and get the new and existing IDs
@@ -242,7 +244,7 @@ class ChromaDBManager:
             persist_directory=self.chroma_save_path
         )
 
-        print('successfully add', documents)
+        print('successfully add')
 
     def delete_document_from_chroma(self, document_source):
         """
@@ -264,7 +266,13 @@ class ChromaDBManager:
 
     def query(self, prompt, num_result=3):
         docs = self.chroma_instance.similarity_search(prompt, k=num_result)
-        return docs
+        result_string = ""
+        for i, (page_content_tuple, metadata_tuple) in enumerate(docs, start=1):
+            _, page_content = page_content_tuple
+            _, metadata = metadata_tuple
+            source = metadata.get('source', 'Unknown source')
+            result_string += f"{i}: {page_content}\nSource: {source}\n\n"
+        return result_string
 
     def count_document(self):
         count = self.chroma_instance._collection.count()
@@ -276,26 +284,44 @@ def main():
     chroma_manager = ChromaDBManager('my_database.db', './chroma_db')
 
     # Example documents to insert (replace with actual documents)
-    documents = [
-        # Replace with actual Document objects with necessary metadata and content
-    ]
+    # Directory where the PDF files are located
+    pdf_directory = "/gpfs/scratch/yh2563/ExamplePDFsForLLM/"
+    
+    # Initialize the PDFProcessor with the directory
+    pdf_processor = PDFProcessor(pdf_directory=pdf_directory)
+
+    # Filename of the PDF to process
+    # pdf_title = "jama_271_5_036.pdf"
+
+    # Load and split the document by title
+    # document_chunks = pdf_processor.load_and_split_document_by_title(pdf_title)
+
+    # For demonstration purposes, let's just print the first 200 characters of $
+    # of the document to show that it's been loaded and split properly.
+    # print(document_chunks[0].page_content[:200])
+    
+    # print('start loading')    
+
+    # If you want to load all PDFs from a directory and process them
+    documents = pdf_processor.load_from_directory(pdf_directory)
+    
+    # print('adding to chroma')
 
     # Add documents to both SQLite and Chroma databases
     chroma_manager.add_documents_to_chroma(documents)
 
     # Query documents from Chroma database
-    query_prompt = "example query"
+    query_prompt = "I’m writing a paper related to Prostate Cancer Localization, give me some paper about it"
     queried_docs = chroma_manager.query(query_prompt, num_result=3)
-    for doc in queried_docs:
-        print(doc)
+    print(queried_docs)
 
     # Count the number of documents in Chroma database
     doc_count = chroma_manager.count_document()
     print(f"Number of documents in Chroma database: {doc_count}")
 
     # Example to delete a document by source
-    source_to_delete = "example_source.pdf"  # Replace with actual source
-    chroma_manager.delete_document_from_chroma(source_to_delete)
+    #source_to_delete = pdf_directory + "jama_271_5_036.pdf"  # Replace with actual source
+    #chroma_manager.delete_document_from_chroma(source_to_delete)
 
 if __name__ == "__main__":
     main()

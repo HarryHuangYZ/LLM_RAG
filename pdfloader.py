@@ -13,7 +13,7 @@ import os
 
 
 class PDFProcessor:
-    def __init__(self, pdf_directory = '', text_splitter= RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=100)):
+    def __init__(self, pdf_directory = '/gpfs/scratch/yh2563/ExamplePDFsForLLM/', text_splitter= RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=100)):
         self.text_splitter = text_splitter
         self.pdf_directory = pdf_directory
 
@@ -36,13 +36,13 @@ class PDFProcessor:
 
 def main():
     # Directory where the PDF files are located
-    pdf_directory = "/content/drive/MyDrive/LLM/ExamplePDFsForLLM/"
+    pdf_directory = "/gpfs/scratch/yh2563/ExamplePDFsForLLM/"
     
     # Initialize the PDFProcessor with the directory
-    pdf_processor = PDFProcessor(store_directory=pdf_directory)
+    pdf_processor = PDFProcessor(pdf_directory=pdf_directory)
     
     # Filename of the PDF to process
-    pdf_title = "ExamplePDFTitle.pdf"
+    pdf_title = "jama_271_5_036.pdf"
     
     # Load and split the document by title
     document_chunks = pdf_processor.load_and_split_document_by_title(pdf_title)
@@ -55,6 +55,6 @@ def main():
     all_docs_chunks = pdf_processor.load_from_directory(pdf_directory)
     
     # Here you can add additional processing for the document chunks
-
+    # print(all_docs_chunks)
 if __name__ == "__main__":
     main()
