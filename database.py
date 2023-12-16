@@ -223,7 +223,7 @@ class ChromaDBManager:
         self.sqlite_db_manager = SQLiteDBManager(db_path)
         self.db_path = db_path
         self.embedding_function = embedding_function
-        self.chroma_instance = Chroma(persist_directory=chroma_save_path, embedding_function=embedding_function)
+        self.chroma_instance = Chroma(persist_directory=self.chroma_save_path, embedding_function=self.embedding_function)
 
     def add_documents_to_chroma(self, documents):
         # Insert documents into the SQL database and get the new and existing IDs
@@ -277,6 +277,11 @@ class ChromaDBManager:
     def count_document(self):
         count = self.chroma_instance._collection.count()
         return count
+
+    def persist(self):
+        self.chroma_instance.persist()
+        print(f'Successfully store Chroma DB at {self.chroma_save_path}')
+
         
 def main():
     # Initialize the SQLite and Chroma database managers
@@ -318,6 +323,9 @@ def main():
     # Count the number of documents in Chroma database
     doc_count = chroma_manager.count_document()
     print(f"Number of documents in Chroma database: {doc_count}")
+    
+    # store the chromadb
+    chroma_manager.persist()
 
     # Example to delete a document by source
     #source_to_delete = pdf_directory + "jama_271_5_036.pdf"  # Replace with actual source

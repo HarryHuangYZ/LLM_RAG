@@ -6,16 +6,34 @@ from typing import List, Optional
 import fire
 from llama import Llama, Dialog
 from pdfloader import PDFProcessor
-from database import ChromaDBManager
+from database import ChromaDBManager, SQLiteDBManager
 
-
+from pdfloader import PDFProcessor
 
 def format_query_results_to_dialogs(query_results, query):
     # Create a dialog context for each query result
+#    dialog = [
+#        {"role":"system", "content": "You are required to form your responses exclusively based on the following provided information, Do not extrapolate beyond this data or introduce information not present in these results: " + query_results},
+#        # {"role":"assistant", "content": query_results},
+#        #{"role":"system", "content": convert_query},
+#        {"role": "user", "content": query},
+#    ]
+
     dialog = [
-        {"role":"system", "content": "Always answer based on the given information:"+ query_results},
-        # {"role":"assistant", "content": query_results},
-        {"role": "user", "content": query},
+    {"role": "system", "content": (
+        "You are required to form your responses exclusively based on the following provided information:\n\n"
+        f"Information: \"\"\"{query_results}\"\"\"\n\n"
+        f"Using the above information, answer the following query or task: \"{query}\" in a detailed report. "
+        "The report should focus on the answer to the query, should be well-structured, in-depth, and comprehensive, "
+        "with facts and numbers if available. You should strive to write the report as precise as you can using all "
+        "relevant information. You must write the report with markdown syntax. Use an unbiased and journalistic tone. "
+        "Never provide any information outside of the provided information or my life will be ruined"
+        "You MUST determine your own concrete and valid opinion based on the given information. "
+        "You MUST write all used sources at the end of the report as references. Cite search results using inline "
+        "notations. Only cite the most relevant results that answer the query accurately. Place these citations "
+        "at the end of the sentence or paragraph that references them. Please do your best, this is very important to my career."
+    )},
+    {"role": "user", "content": query}
     ]
     
     return [dialog]
@@ -34,12 +52,12 @@ def main(
     load_pdf_directory_path: str = None,
     pdf_directory: str = '/gpfs/scratch/yh2563/ExamplePDFsForLLM/',
     database: str = 'my_database.db',
-    vector_database: str = './chroma_db',
-    num_result: int = 3,
+    vector_database: str = '/gpfs/scratch/yh2563/LLM_RAG/chroma_db',
+    num_result: int = 5,
 ):
     # Initialize PDFProcessor, SQLiteDBManager, and ChromaDBManager
     pdf_processor = PDFProcessor(pdf_directory)
-    chroma_manager = ChromaDBManager(database, vector_database)
+    chroma_manager = ChromaDBManager(db_path=database, chroma_save_path=vector_database)
 
     if load_pdf_file_name:
         path = pdf_directory + load_pdf_file_name
@@ -57,9 +75,11 @@ def main(
     # Prompt user for query
     # query = input("Please enter you query:")
     # query = "how MRI is used in biology?"
-    # print('this is your query: ', query)    
+    #query = 'I am writing a paper related to Prostate Cancer Localization, give me some papers about it'
+    print('this is your query: ', query)    
     # Perform a query
     query_results = chroma_manager.query(query, num_result=num_result)
+    print(query_results)
     # print('here is the related information: ', query_results)
     # Prepare dialogs for Llama2 based on query results
     dialogs = format_query_results_to_dialogs(query_results, query)
@@ -85,6 +105,7 @@ def main(
         for msg in dialog:
             print(f"{msg['role'].capitalize()}: {msg['content']}\n")
         print(f"> {result['generation']['role'].capitalize()}: {result['generation']['content']}")
+        print(f"> {'result'}: {result['generation']['content']}")
         print("\n==================================\n")
 
 if __name__ == "__main__":
