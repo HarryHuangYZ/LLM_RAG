@@ -23,7 +23,6 @@ def generate_cleaning_prompts(document_chunks: List[str]) -> List[List[dict]]:
             {"role": "user", "content": prompt_string},
         ]
         dialogs.append([dialog])
-        break
 
     return dialogs
 
@@ -37,7 +36,7 @@ def main(
     max_gen_len: Optional[int] = None,
     load_pdf_file_path: str = None,
     load_pdf_file_name: str = None,
-    load_pdf_directory_path: str = None,
+    load_pdf_directory_path: str = '/gpfs/scratch/yh2563/ExamplePDFsForLLM/',
     pdf_directory: str = '/gpfs/scratch/yh2563/ExamplePDFsForLLM/',
     database: str = 'my_database.db',
     vector_database: str = './chroma_db'
@@ -48,7 +47,7 @@ def main(
     chroma_manager = ChromaDBManager(database, vector_database)
 
     # Loading document chunks
-    load_pdf_file_name = "jama_271_5_036.pdf"
+    # load_pdf_file_name = "jama_271_5_036.pdf"
     document_chunks = []
     if load_pdf_file_name:
         path = pdf_directory + load_pdf_file_name
@@ -84,11 +83,16 @@ def main(
         cleaned_chunks.append(cleaned_chunk)
     
     #cleaned_chunks = result['generation']['content']
+    
+    for i, doc in enumerate(document_chunks):
+        doc.page_content = cleaned_chunks[i]
+        # print(doc)
 
-    print(cleaned_chunks)
+    # print(document_chunks[0])
+    # print(cleaned_chunks)
     # Adding cleaned documents to database
-    # chroma_manager.add_documents_to_chroma(cleaned_chunks)
-    # chroma_manager.persist()
+    chroma_manager.add_documents_to_chroma(document_chunks)
+    chroma_manager.persist()
 
 if __name__ == "__main__":
     fire.Fire(main)
