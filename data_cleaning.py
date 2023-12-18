@@ -7,18 +7,29 @@ from database import ChromaDBManager
 def generate_cleaning_prompts(document_chunks: List[str]) -> List[List[dict]]:
     # Generate prompts for each document chunk
     dialogs = []
-    for chunk in document_chunks:
+
+    for doc in document_chunks:
+
+        page_content = doc.page_content
+        source = doc.metadata.get('source', 'Unknown source')
+        
+        # Format the prompt string
+        prompt_string = f"{page_content}"
+        print(prompt_string)
+
+
         dialog = [
-            {"role": "system", "content": "Your task is to clean the following text, correcting any errors and improving clarity."},
-            {"role": "user", "content": chunk},
+            {"role": "system", "content": "Your task is to clean the following text, correcting any errors and improving clarity, removing all the symbols like '\n' and remove citations and human names. Also fix the weird space and symbols. Don't leave any \n in your response, remove all the \."},
+            {"role": "user", "content": prompt_string},
         ]
-        dialogs.append(dialog)
+        dialogs.append([dialog])
+        break
+
     return dialogs
 
 def main(
     ckpt_dir: str,
     tokenizer_path: str,
-    query: str,
     temperature: float = 0.6,
     top_p: float = 0.9,
     max_seq_len: int = 4096,
@@ -37,6 +48,7 @@ def main(
     chroma_manager = ChromaDBManager(database, vector_database)
 
     # Loading document chunks
+    load_pdf_file_name = "jama_271_5_036.pdf"
     document_chunks = []
     if load_pdf_file_name:
         path = pdf_directory + load_pdf_file_name
@@ -70,9 +82,13 @@ def main(
         )
         cleaned_chunk = result[0]['generation']['content']
         cleaned_chunks.append(cleaned_chunk)
+    
+    #cleaned_chunks = result['generation']['content']
 
+    print(cleaned_chunks)
     # Adding cleaned documents to database
-    chroma_manager.add_documents_to_chroma(cleaned_chunks)
+    # chroma_manager.add_documents_to_chroma(cleaned_chunks)
+    # chroma_manager.persist()
 
 if __name__ == "__main__":
     fire.Fire(main)
